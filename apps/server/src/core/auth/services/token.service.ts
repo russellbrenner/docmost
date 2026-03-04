@@ -110,7 +110,11 @@ export class TokenService {
       type: JwtType.API_KEY,
     };
 
-    return this.jwtService.sign(payload, expiresIn ? { expiresIn } : {});
+    // When no expiresIn is provided (i.e. "no expiration" keys), override the
+    // JwtModule default (90d) with a 100-year expiry. JWTs always carry an exp
+    // claim, so we use a long-lived one rather than omitting it.
+    const signOpts = expiresIn ? { expiresIn } : { expiresIn: '36500d' };
+    return this.jwtService.sign(payload, signOpts);
   }
 
   async verifyJwt(token: string, tokenType: string) {
