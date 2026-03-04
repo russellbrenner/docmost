@@ -29,17 +29,24 @@ export class GitSyncService implements OnModuleInit {
     try {
       await fs.access(this.repoPath);
       await this.git('rev-parse', '--git-dir');
-      this.logger.log(`Git sync enabled at ${this.repoPath}`);
     } catch {
       this.logger.log(`Initialising git repo at ${this.repoPath}`);
       await fs.mkdir(this.repoPath, { recursive: true });
       await this.git('init');
+    }
+
+    // Set git identity before any commits
+    await this.git('config', 'user.email', 'docmost@itsa.house');
+    await this.git('config', 'user.name', 'Docmost');
+
+    // Ensure at least one commit exists (needed for git add/rm to work)
+    try {
+      await this.git('rev-parse', 'HEAD');
+    } catch {
       await this.git('commit', '--allow-empty', '-m', 'Initial commit');
     }
 
-    // Ensure git identity is always configured for commits
-    await this.git('config', 'user.email', 'docmost@itsa.house');
-    await this.git('config', 'user.name', 'Docmost');
+    this.logger.log(`Git sync enabled at ${this.repoPath}`);
   }
 
   isEnabled(): boolean {
