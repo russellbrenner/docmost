@@ -25,6 +25,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis from '@keyv/redis';
 import { LoggerModule } from './common/logger/logger.module';
 import { ClsModule } from 'nestjs-cls';
+import { GitSyncModule } from './integrations/git-sync/git-sync.module';
 
 const enterpriseModules = [];
 try {
@@ -81,6 +82,7 @@ try {
     EventEmitterModule.forRoot(),
     SecurityModule,
     TelemetryModule,
+    GitSyncModule,
     ...enterpriseModules,
   ],
   controllers: [AppController],

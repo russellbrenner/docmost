@@ -9,6 +9,7 @@ export enum QueueName {
   HISTORY_QUEUE = '{history-queue}',
   NOTIFICATION_QUEUE = '{notification-queue}',
   AUDIT_QUEUE = '{audit-queue}',
+  GIT_SYNC_QUEUE = '{git-sync-queue}',
 }
 
 export enum QueueJob {
@@ -72,4 +73,7 @@ export enum QueueJob {
 
   AUDIT_LOG = 'audit-log',
   AUDIT_CLEANUP = 'audit-cleanup',
+
+  GIT_SYNC_PAGE = 'git-sync-page',
+  GIT_SYNC_DELETE = 'git-sync-delete',
 }

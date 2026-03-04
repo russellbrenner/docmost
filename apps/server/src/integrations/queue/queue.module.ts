@@ -92,6 +92,14 @@ import { GeneralQueueProcessor } from './processors/general-queue.processor';
         attempts: 3,
       },
     }),
+    BullModule.registerQueue({
+      name: QueueName.GIT_SYNC_QUEUE,
+      defaultJobOptions: {
+        removeOnComplete: true,
+        removeOnFail: true,
+        attempts: 2,
+      },
+    }),
   ],
   exports: [BullModule],
   providers: [GeneralQueueProcessor],
