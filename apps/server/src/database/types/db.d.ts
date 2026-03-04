@@ -429,6 +429,37 @@ export interface PagePermissions {
   updatedAt: Generated<Timestamp>;
 }
 
+export interface Labels {
+  id: Generated<string>;
+  name: string;
+  color: string | null;
+  workspaceId: string;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface PageLabels {
+  id: Generated<string>;
+  pageId: string;
+  labelId: string;
+  createdAt: Generated<Timestamp>;
+}
+
+export interface Webhooks {
+  id: Generated<string>;
+  name: string | null;
+  url: string;
+  secret: string | null;
+  events: string[];
+  isActive: Generated<boolean>;
+  workspaceId: string;
+  creatorId: string | null;
+  lastTriggeredAt: Timestamp | null;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+  deletedAt: Timestamp | null;
+}
+
 export interface DB {
   apiKeys: ApiKeys;
   attachments: Attachments;
@@ -441,6 +472,8 @@ export interface DB {
   fileTasks: FileTasks;
   groups: Groups;
   groupUsers: GroupUsers;
+  labels: Labels;
+  pageLabels: PageLabels;
   notifications: Notifications;
   pageAccess: PageAccess;
   pagePermissions: PagePermissions;
@@ -453,6 +486,7 @@ export interface DB {
   users: Users;
   userTokens: UserTokens;
   watchers: Watchers;
+  webhooks: Webhooks;
   workspaceInvitations: WorkspaceInvitations;
   workspaces: Workspaces;
 }

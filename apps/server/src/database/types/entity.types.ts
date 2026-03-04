@@ -25,6 +25,9 @@ import {
   ApiKeys,
   Watchers,
   Audit as _Audit,
+  Labels,
+  PageLabels,
+  Webhooks,
 } from './db';
 import { PageEmbeddings } from '@docmost/db/types/embeddings.types';
 
@@ -161,3 +164,17 @@ export type UpdatablePagePermission = Updateable<Omit<_PagePermissions, 'id'>>;
 export type Audit = Selectable<_Audit>;
 export type InsertableAudit = Insertable<_Audit>;
 export type UpdatableAudit = Updateable<Omit<_Audit, 'id'>>;
+
+// Label
+export type Label = Selectable<Labels>;
+export type InsertableLabel = Insertable<Labels>;
+export type UpdatableLabel = Updateable<Omit<Labels, 'id'>>;
+
+// Page Label
+export type PageLabel = Selectable<PageLabels>;
+export type InsertablePageLabel = Insertable<PageLabels>;
+
+// Webhook
+export type Webhook = Selectable<Webhooks>;
+export type InsertableWebhook = Insertable<Webhooks>;
+export type UpdatableWebhook = Updateable<Omit<Webhooks, 'id'>>;
