@@ -36,6 +36,10 @@ export class GitSyncService implements OnModuleInit {
       await this.git('init');
       await this.git('commit', '--allow-empty', '-m', 'Initial commit');
     }
+
+    // Ensure git identity is always configured for commits
+    await this.git('config', 'user.email', 'docmost@itsa.house');
+    await this.git('config', 'user.name', 'Docmost');
   }
 
   isEnabled(): boolean {
