@@ -26,6 +26,7 @@ import KeyvRedis from '@keyv/redis';
 import { LoggerModule } from './common/logger/logger.module';
 import { ClsModule } from 'nestjs-cls';
 import { GitSyncModule } from './integrations/git-sync/git-sync.module';
+import { NoopAuditModule } from './integrations/audit/audit.module';
 
 const enterpriseModules = [];
 try {
@@ -48,6 +49,7 @@ try {
       middleware: { mount: true },
     }),
     LoggerModule,
+    NoopAuditModule,
     CoreModule,
     DatabaseModule,
     EnvironmentModule,
