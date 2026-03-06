@@ -41,3 +41,19 @@ lerna-debug.log*
 .nx
 .nx/installation
 .nx/cache
+
+# Claude Code local config (tracked on Gitea, excluded from GitHub)
+.claude/
+
+# MCP local state
+.agentic-tools-mcp/
+
+# macOS
+._*
+.Spotlight-V100
+.Trashes
+
+# Editor swap files
+*.swp
+*.swo
+*~
