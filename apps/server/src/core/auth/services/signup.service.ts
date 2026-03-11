@@ -118,6 +118,7 @@ export class SignupService {
         const workspaceData: CreateWorkspaceDto = {
           name: createAdminUserDto.workspaceName || 'My workspace',
           hostname: createAdminUserDto.hostname,
+          customDomain: createAdminUserDto.customDomain,
         };
 
         workspace = await this.workspaceService.create(

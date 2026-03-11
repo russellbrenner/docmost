@@ -13,6 +13,7 @@ import {
   IconDeviceDesktop,
   IconLogout,
   IconMoon,
+  IconPlus,
   IconSettings,
   IconSun,
   IconUserCircle,
@@ -26,6 +27,8 @@ import useAuth from "@/features/auth/hooks/use-auth.ts";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
 import { useTranslation } from "react-i18next";
 import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
+import { isCloud } from "@/lib/config.ts";
+import JoinedWorkspaces from "@/ee/components/joined-workspaces.tsx";
 
 export default function TopMenu() {
   const { t } = useTranslation();
@@ -77,6 +80,21 @@ export default function TopMenu() {
         >
           {t("Manage members")}
         </Menu.Item>
+
+        {(isCloud() || workspace?.hasLicenseKey) && (
+          <>
+            <Menu.Divider />
+            <Menu.Label>{t("Workspaces")}</Menu.Label>
+            <JoinedWorkspaces />
+            <Menu.Item
+              component={Link}
+              to="/create"
+              leftSection={<IconPlus size={16} />}
+            >
+              {t("Create workspace")}
+            </Menu.Item>
+          </>
+        )}
 
         <Menu.Divider />
 

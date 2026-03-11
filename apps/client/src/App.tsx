@@ -59,11 +59,9 @@ export default function App() {
           <Route path={"/setup/register"} element={<SetupWorkspace />} />
         )}
 
+        <Route path={"/create"} element={<CreateWorkspace />} />
         {isCloud() && (
-          <>
-            <Route path={"/create"} element={<CreateWorkspace />} />
-            <Route path={"/select"} element={<CloudLogin />} />
-          </>
+          <Route path={"/select"} element={<CloudLogin />} />
         )}
 
         <Route element={<ShareLayout />}>

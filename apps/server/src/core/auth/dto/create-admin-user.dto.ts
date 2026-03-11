@@ -28,4 +28,8 @@ export class CreateAdminUserDto extends CreateUserDto {
   @IsString()
   @Transform(({ value }: TransformFnParams) => value?.trim())
   hostname?: string;
+
+  @IsOptional()
+  @IsString()
+  customDomain?: string;
 }
