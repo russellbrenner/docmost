@@ -53,6 +53,9 @@ lerna-debug.log*
 .Spotlight-V100
 .Trashes
 
+# Git worktrees
+.worktrees/
+
 # Editor swap files
 *.swp
 *.swo
