@@ -1,0 +1,101 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "plans/**"
+      - "*.md"
+      - ".gitignore"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Setup
+        run: |
+          buildah --version
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "SHORT_SHA=${SHORT_SHA}" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
+          AUTH_URL=$(echo "$REPO_URL" | sed "s|https://|https://token:${DEPLOY_TOKEN}@|")
+          rm -rf checkout && git clone --depth=1 "$AUTH_URL" checkout
+
+      - name: Registry login
+        env:
+          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}" ${{ vars.REGISTRY_URL }}
+          buildah login --tls-verify=false -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}" ${{ vars.REGISTRY_INTERNAL }}
+
+      - name: Build image
+        run: |
+          cd checkout
+          buildah bud --isolation=chroot --no-cache \
+            -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:latest \
+            -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${SHORT_SHA} \
+            -f Dockerfile .
+
+      - name: Push image
+        run: |
+          INTERNAL=${{ vars.REGISTRY_INTERNAL }}
+          push_internal() {
+            local img=$1 attempt=0
+            local dest=$(echo "$img" | sed "s|${{ vars.REGISTRY_URL }}|$INTERNAL|")
+            while [ $attempt -lt 3 ]; do
+              attempt=$((attempt + 1))
+              echo "Push attempt $attempt/3: $img (via internal)"
+              if buildah push --tls-verify=false "$img" "docker://$dest"; then return 0; fi
+              echo "Attempt $attempt failed, retrying in 15s..."
+              sleep 15
+            done
+            echo "Push failed after 3 attempts: $img"
+            return 1
+          }
+          push_internal ${{ vars.REGISTRY_URL }}/rbrenner/docmost:latest
+          push_internal ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${SHORT_SHA}
+
+      - name: Deploy to k8s
+        run: |
+          SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token 2>/dev/null || echo "")
+          CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          K8S_API="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS:-443}"
+          RESTART_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [ -z "$SA_TOKEN" ]; then
+            echo "No SA token — skipping deploy"
+            exit 0
+          fi
+          curl -sf --cacert "$CA_CERT" \
+            -H "Authorization: Bearer $SA_TOKEN" \
+            -H "Content-Type: application/strategic-merge-patch+json" \
+            -X PATCH \
+            "${K8S_API}/apis/apps/v1/namespaces/docmost/deployments/docmost" \
+            -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kubectl.kubernetes.io/restartedAt\":\"${RESTART_TIME}\"}}}}}" \
+            -o /dev/null
+          echo "Rollout restart triggered"
+
+      - name: Notify success
+        if: success()
+        env:
+          WEBHOOK_URL: ${{ secrets.MATTERMOST_AGENT_WEBHOOK }}
+        run: |
+          curl -sf -X POST "$WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\": \"**[ci]** Built docmost:${SHORT_SHA} (buildah) — deployed to k8s\", \"username\": \"Gitea CI\"}" || true
+
+      - name: Notify failure
+        if: failure()
+        env:
+          WEBHOOK_URL: ${{ secrets.MATTERMOST_ALERTS_WEBHOOK }}
+        run: |
+          curl -sf -X POST "$WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\": \"**[ci] FAILED** :rotating_light: docmost build\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\", \"username\": \"Gitea CI\"}" || true
