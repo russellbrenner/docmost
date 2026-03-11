@@ -21,7 +21,7 @@ export default function JoinedWorkspaces() {
           <UnstyledButton
             key={index}
             component={Link}
-            to={getHostnameUrl(workspace?.hostname) + "/home"}
+            to={getHostnameUrl(workspace) + "/home"}
             className={classes.workspace}
           >
             <Group wrap="nowrap">
@@ -38,7 +38,7 @@ export default function JoinedWorkspaces() {
                 </Text>
 
                 <Text c="dimmed" size="sm">
-                  {getHostnameUrl(workspace?.hostname)?.split("//")[1]}
+                  {getHostnameUrl(workspace)?.split("//")[1]}
                 </Text>
               </div>
 

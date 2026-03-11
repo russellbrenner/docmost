@@ -15,14 +15,16 @@ export class DomainMiddleware implements NestMiddleware {
     next: () => void,
   ) {
     if (this.environmentService.isSelfHosted()) {
-      const workspace = await this.workspaceRepo.findFirst();
+      const host = (req.headers.host ?? '').split(':')[0];
+      let workspace = await this.workspaceRepo.findByCustomDomain(host);
       if (!workspace) {
-        //throw new NotFoundException('Workspace not found');
+        workspace = await this.workspaceRepo.findFirst();
+      }
+      if (!workspace) {
         (req as any).workspaceId = null;
         return next();
       }
 
-      // TODO: unify
       (req as any).workspaceId = workspace.id;
       (req as any).workspace = workspace;
     } else if (this.environmentService.isCloud()) {

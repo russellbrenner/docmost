@@ -57,3 +57,6 @@ lerna-debug.log*
 *.swp
 *.swo
 *~
+
+# Git worktrees
+.worktrees/

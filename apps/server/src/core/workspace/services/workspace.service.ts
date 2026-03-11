@@ -73,6 +73,10 @@ export class WorkspaceService {
     return this.workspaceRepo.findById(workspaceId);
   }
 
+  async getJoinedWorkspaces(email: string) {
+    return this.workspaceRepo.findAllByUserEmail(email);
+  }
+
   async getWorkspaceInfo(workspaceId: string) {
     const workspace = await this.workspaceRepo.findById(workspaceId);
     if (!workspace) {
@@ -130,6 +134,8 @@ export class WorkspaceService {
         let billingEmail = undefined;
         let settings = undefined;
 
+        let customDomain = undefined;
+
         if (this.environmentService.isCloud()) {
           // generate unique hostname
           hostname = await this.generateHostname(
@@ -143,6 +149,8 @@ export class WorkspaceService {
           plan = 'standard';
           billingEmail = user.email;
           settings = { ai: { generative: true } };
+        } else if (createWorkspaceDto.customDomain) {
+          customDomain = createWorkspaceDto.customDomain;
         }
 
         // create workspace
@@ -151,6 +159,7 @@ export class WorkspaceService {
             name: createWorkspaceDto.name,
             description: createWorkspaceDto.description,
             hostname,
+            customDomain,
             status,
             trialEndAt,
             plan,

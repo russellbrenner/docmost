@@ -14,6 +14,7 @@ export interface ISetupWorkspace {
   name: string;
   email: string;
   password: string;
+  customDomain?: string;
 }
 
 export interface IChangePassword {

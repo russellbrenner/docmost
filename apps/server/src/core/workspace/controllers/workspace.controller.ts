@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { WorkspaceService } from '../services/workspace.service';
 import { UpdateWorkspaceDto } from '../dto/update-workspace.dto';
+import { CreateWorkspaceDto } from '../dto/create-workspace.dto';
 import { UpdateWorkspaceUserRoleDto } from '../dto/update-workspace-user-role.dto';
 import { AuthUser } from '../../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../../common/decorators/auth-workspace.decorator';
@@ -44,6 +45,21 @@ export class WorkspaceController {
     private readonly workspaceAbility: WorkspaceAbilityFactory,
     private environmentService: EnvironmentService,
   ) {}
+
+  @HttpCode(HttpStatus.OK)
+  @Post('create')
+  async createWorkspace(
+    @Body() dto: CreateWorkspaceDto,
+    @AuthUser() user: User,
+  ) {
+    return this.workspaceService.create(user, dto);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('joined')
+  async getJoinedWorkspaces(@AuthUser() user: User) {
+    return this.workspaceService.getJoinedWorkspaces(user.email);
+  }
 
   @Public()
   @HttpCode(HttpStatus.OK)

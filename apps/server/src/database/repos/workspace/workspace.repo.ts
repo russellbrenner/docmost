@@ -96,6 +96,32 @@ export class WorkspaceRepo {
       .executeTakeFirst();
   }
 
+  async findByCustomDomain(domain: string): Promise<Workspace> {
+    return await this.db
+      .selectFrom('workspaces')
+      .selectAll()
+      .where(sql`LOWER(custom_domain)`, '=', sql`LOWER(${domain})`)
+      .executeTakeFirst();
+  }
+
+  async findAllByUserEmail(
+    email: string,
+  ): Promise<Pick<Workspace, 'id' | 'name' | 'logo' | 'hostname' | 'customDomain'>[]> {
+    return await this.db
+      .selectFrom('workspaces')
+      .select(['id', 'name', 'logo', 'hostname', 'customDomain'])
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('users')
+            .select('id')
+            .where(sql`LOWER(users.email)`, '=', sql`LOWER(${email})`)
+            .whereRef('users.workspaceId', '=', 'workspaces.id'),
+        ),
+      )
+      .execute();
+  }
+
   async hostnameExists(
     hostname: string,
     trx?: KyselyTransaction,

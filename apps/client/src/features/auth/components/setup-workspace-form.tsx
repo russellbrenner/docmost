@@ -27,6 +27,7 @@ const formSchema = z.object({
     .email()
     .min(1, { message: "email is required" }),
   password: z.string().min(8),
+  customDomain: z.string().optional(),
 });
 type FormValues = z.infer<typeof formSchema>;
 
@@ -42,6 +43,7 @@ export function SetupWorkspaceForm() {
       name: "",
       email: "",
       password: "",
+      customDomain: "",
     },
   });
 
@@ -61,15 +63,27 @@ export function SetupWorkspaceForm() {
 
           <form onSubmit={form.onSubmit(onSubmit)}>
             {!isCloud() && (
-              <TextInput
-                id="workspaceName"
-                type="text"
-                label={t("Workspace Name")}
-                placeholder={t("e.g ACME Inc")}
-                variant="filled"
-                mt="md"
-                {...form.getInputProps("workspaceName")}
-              />
+              <>
+                <TextInput
+                  id="workspaceName"
+                  type="text"
+                  label={t("Workspace Name")}
+                  placeholder={t("e.g ACME Inc")}
+                  variant="filled"
+                  mt="md"
+                  {...form.getInputProps("workspaceName")}
+                />
+                <TextInput
+                  id="customDomain"
+                  type="text"
+                  label={t("Domain")}
+                  placeholder="wiki.example.com"
+                  description={t("The hostname this workspace is served at")}
+                  variant="filled"
+                  mt="md"
+                  {...form.getInputProps("customDomain")}
+                />
+              </>
             )}
 
             <TextInput
