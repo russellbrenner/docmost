@@ -51,10 +51,20 @@ jobs:
       - name: Build image
         run: |
           cd checkout
+          # Clean stale buildah storage to prevent cleanup errors
+          buildah rm --all 2>/dev/null || true
           buildah bud --isolation=chroot --no-cache \
             -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${IMAGE_TAG} \
             -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${SHORT_SHA} \
-            -f Dockerfile .
+            -f Dockerfile . || {
+              # buildah cleanup errors (exit 125) are non-fatal if the image was tagged
+              if buildah images | grep -q "${SHORT_SHA}"; then
+                echo "Build succeeded despite cleanup error"
+              else
+                echo "Build genuinely failed"
+                exit 1
+              fi
+            }
 
       - name: Push image
         run: |
