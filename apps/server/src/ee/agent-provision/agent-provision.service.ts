@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
 import { executeTx } from '@docmost/db/utils';
@@ -69,11 +70,13 @@ export class AgentProvisionService {
     }
 
     const result = await executeTx(this.db, async (trx) => {
-      // Create agent user (no password, pre-verified email)
+      // Create agent user with a random password (agents authenticate via API key, never password)
+      // UserRepo.insertUser unconditionally hashes the password field, so we must provide one
       const newUser = await this.userRepo.insertUser(
         {
           name: dto.name,
           email: dto.email,
+          password: randomBytes(32).toString('hex'),
           role: dto.role === 'admin' ? UserRole.ADMIN : UserRole.MEMBER,
           emailVerifiedAt: new Date(),
           workspaceId: workspace.id,
