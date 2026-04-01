@@ -460,7 +460,21 @@ export interface Webhooks {
   deletedAt: Timestamp | null;
 }
 
+export interface AgentRegistry {
+  id: Generated<string>;
+  name: string;
+  slug: string;
+  userId: string;
+  apiKeyId: string;
+  token: string;
+  workspaceId: string;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+  deletedAt: Timestamp | null;
+}
+
 export interface DB {
+  agentRegistry: AgentRegistry;
   apiKeys: ApiKeys;
   attachments: Attachments;
   audit: Audit;

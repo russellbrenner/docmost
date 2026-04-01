@@ -2,7 +2,7 @@ name: Build and deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/agent-collaboration]
     paths-ignore:
       - "plans/**"
       - "*.md"
@@ -26,7 +26,7 @@ jobs:
         run: |
           REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
           AUTH_URL=$(echo "$REPO_URL" | sed "s|https://|https://token:${DEPLOY_TOKEN}@|")
-          rm -rf checkout && git clone --depth=1 "$AUTH_URL" checkout
+          rm -rf checkout && git clone --depth=1 --branch "${{ github.ref_name }}" "$AUTH_URL" checkout
 
       - name: Registry login
         env:
@@ -36,13 +36,35 @@ jobs:
           buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}" ${{ vars.REGISTRY_URL }}
           buildah login --tls-verify=false -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}" ${{ vars.REGISTRY_INTERNAL }}
 
+      - name: Determine tags
+        run: |
+          REF_NAME="${{ github.ref_name }}"
+          if [ "$REF_NAME" = "main" ]; then
+            echo "IMAGE_TAG=latest" >> "$GITHUB_ENV"
+            echo "IS_MAIN=true" >> "$GITHUB_ENV"
+          else
+            BRANCH_TAG=$(echo "$REF_NAME" | sed 's/[^a-zA-Z0-9._-]/-/g')
+            echo "IMAGE_TAG=${BRANCH_TAG}" >> "$GITHUB_ENV"
+            echo "IS_MAIN=false" >> "$GITHUB_ENV"
+          fi
+
       - name: Build image
         run: |
           cd checkout
+          # Clean stale buildah storage to prevent cleanup errors
+          buildah rm --all 2>/dev/null || true
           buildah bud --isolation=chroot --no-cache \
-            -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:latest \
+            -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${IMAGE_TAG} \
             -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${SHORT_SHA} \
-            -f Dockerfile .
+            -f Dockerfile . || {
+              # buildah cleanup errors (exit 125) are non-fatal if the image was tagged
+              if buildah images | grep -q "${SHORT_SHA}"; then
+                echo "Build succeeded despite cleanup error"
+              else
+                echo "Build genuinely failed"
+                exit 1
+              fi
+            }
 
       - name: Push image
         run: |
@@ -60,10 +82,11 @@ jobs:
             echo "Push failed after 3 attempts: $img"
             return 1
           }
-          push_internal ${{ vars.REGISTRY_URL }}/rbrenner/docmost:latest
+          push_internal ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${IMAGE_TAG}
           push_internal ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${SHORT_SHA}
 
       - name: Deploy to k8s
+        if: env.IS_MAIN == 'true'
         run: |
           SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token 2>/dev/null || echo "")
           CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
@@ -87,9 +110,13 @@ jobs:
         env:
           WEBHOOK_URL: ${{ secrets.MATTERMOST_AGENT_WEBHOOK }}
         run: |
+          DEPLOY_MSG=""
+          if [ "$IS_MAIN" = "true" ]; then
+            DEPLOY_MSG=" — deployed to k8s"
+          fi
           curl -sf -X POST "$WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
-            -d "{\"text\": \"**[ci]** Built docmost:${SHORT_SHA} (buildah) — deployed to k8s\", \"username\": \"Gitea CI\"}" || true
+            -d "{\"text\": \"**[ci]** Built docmost:${IMAGE_TAG} (${SHORT_SHA})${DEPLOY_MSG}\", \"username\": \"Gitea CI\"}" || true
 
       - name: Notify failure
         if: failure()
