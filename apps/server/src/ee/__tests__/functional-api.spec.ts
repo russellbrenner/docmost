@@ -22,11 +22,22 @@ async function post(path: string, body: Record<string, unknown> = {}, token?: st
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? { Cookie: `authToken=${token}` } : {}),
     },
     body: JSON.stringify(body),
   });
   const data = await resp.json().catch(() => null);
-  return { status: resp.status, data, ok: resp.ok };
+  // Extract Set-Cookie authToken if present
+  const setCookie = resp.headers.get('set-cookie') || '';
+  const cookieMatch = setCookie.match(/authToken=([^;]+)/);
+  const authToken = cookieMatch ? cookieMatch[1] : undefined;
+  return { status: resp.status, data, ok: resp.ok, authToken };
+}
+
+function extractToken(setCookie: string | null): string | undefined {
+  if (!setCookie) return undefined;
+  const match = setCookie.match(/authToken=([^;]+)/);
+  return match ? match[1] : undefined;
 }
 
 async function setupWorkspace(): Promise<string> {
@@ -38,22 +49,23 @@ async function setupWorkspace(): Promise<string> {
     workspaceName: 'Test Workspace',
   });
 
-  if (setupResp.ok && setupResp.data?.tokens?.accessToken) {
-    return setupResp.data.tokens.accessToken;
+  if (setupResp.ok && setupResp.authToken) {
+    return setupResp.authToken;
   }
 
   // If setup already done, log in
+  // Docmost returns JWT in Set-Cookie (HttpOnly), not in response body
   const loginResp = await post('auth/login', {
     email: 'admin@test.local',
     password: 'TestPassword123!',
   });
 
-  if (loginResp.ok && loginResp.data?.tokens?.accessToken) {
-    return loginResp.data.tokens.accessToken;
+  if (loginResp.ok && loginResp.authToken) {
+    return loginResp.authToken;
   }
 
   throw new Error(
-    `Could not set up or log in to test instance. Setup: ${setupResp.status}, Login: ${loginResp.status}`,
+    `Could not set up or log in. Setup: ${setupResp.status} (token: ${!!setupResp.authToken}), Login: ${loginResp.status} (token: ${!!loginResp.authToken})`,
   );
 }
 
@@ -72,19 +84,23 @@ beforeAll(async () => {
 
   adminToken = await setupWorkspace();
 
-  // Create a test space
+  // Create a test space (or use the existing one)
   const spaceResp = await post('spaces/create', {
     name: 'Agent Test Space',
     slug: 'agenttestspace',
   }, adminToken);
 
-  if (spaceResp.ok) {
+  if (spaceResp.ok && spaceResp.data?.id) {
     testSpaceId = spaceResp.data.id;
   } else {
-    // Space might already exist, try to find it
+    // Space might already exist, find it in the list
+    // Docmost's spaces endpoint returns { data: { items: [...] } }
     const spacesResp = await post('spaces', {}, adminToken);
     if (spacesResp.ok) {
-      const existing = spacesResp.data?.items?.find?.((s: any) => s.slug === 'agenttestspace');
+      const spaceList = spacesResp.data?.data?.items
+        || spacesResp.data?.items
+        || (Array.isArray(spacesResp.data) ? spacesResp.data : []);
+      const existing = spaceList.find?.((s: any) => s.slug === 'agenttestspace');
       if (existing) {
         testSpaceId = existing.id;
       }
