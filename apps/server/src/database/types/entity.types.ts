@@ -28,6 +28,7 @@ import {
   Labels,
   PageLabels,
   Webhooks,
+  AgentRegistry as AgentRegistryTable,
 } from './db';
 import { PageEmbeddings } from '@docmost/db/types/embeddings.types';
 
@@ -178,3 +179,8 @@ export type InsertablePageLabel = Insertable<PageLabels>;
 export type Webhook = Selectable<Webhooks>;
 export type InsertableWebhook = Insertable<Webhooks>;
 export type UpdatableWebhook = Updateable<Omit<Webhooks, 'id'>>;
+
+// Agent Registry
+export type AgentRegistry = Selectable<AgentRegistryTable>;
+export type InsertableAgentRegistry = Insertable<AgentRegistryTable>;
+export type UpdatableAgentRegistry = Updateable<Omit<AgentRegistryTable, 'id'>>;
