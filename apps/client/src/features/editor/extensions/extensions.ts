@@ -30,6 +30,7 @@ import {
   TiptapImage,
   Callout,
   TiptapVideo,
+  TiptapAudio,
   LinkExtension,
   Selection,
   Attachment,
@@ -37,6 +38,7 @@ import {
   Drawio,
   Excalidraw,
   Embed,
+  TiptapPdf,
   SearchAndReplace,
   Mention,
   TableDndExtension,
@@ -47,7 +49,7 @@ import {
   SharedStorage,
   Columns,
   Column,
-  Status
+  Status,
 } from "@docmost/editor-ext";
 import {
   randomElement,
@@ -68,11 +70,13 @@ import ImageView from "@/features/editor/components/image/image-view.tsx";
 import CalloutView from "@/features/editor/components/callout/callout-view.tsx";
 import StatusView from "@/features/editor/components/status/status-view.tsx";
 import VideoView from "@/features/editor/components/video/video-view.tsx";
+import AudioView from "@/features/editor/components/audio/audio-view.tsx";
 import AttachmentView from "@/features/editor/components/attachment/attachment-view.tsx";
 import CodeBlockView from "@/features/editor/components/code-block/code-block-view.tsx";
 import DrawioView from "../components/drawio/drawio-view";
 import ExcalidrawView from "@/features/editor/components/excalidraw/excalidraw-view.tsx";
 import EmbedView from "@/features/editor/components/embed/embed-view.tsx";
+import PdfView from "@/features/editor/components/pdf/pdf-view.tsx";
 import SubpagesView from "@/features/editor/components/subpages/subpages-view.tsx";
 import { common, createLowlight } from "lowlight";
 import plaintext from "highlight.js/lib/languages/plaintext";
@@ -86,12 +90,14 @@ import fortran from "highlight.js/lib/languages/fortran";
 import haskell from "highlight.js/lib/languages/haskell";
 import scala from "highlight.js/lib/languages/scala";
 import mentionRenderItems from "@/features/editor/components/mention/mention-suggestion.ts";
-import { ReactNodeViewRenderer } from "@tiptap/react";
+import { ReactNodeViewRenderer, ReactMarkViewRenderer } from "@tiptap/react";
 import MentionView from "@/features/editor/components/mention/mention-view.tsx";
+import LinkView from "@/features/editor/components/link/link-view.tsx";
 import i18n from "@/i18n.ts";
 import { MarkdownClipboard } from "@/features/editor/extensions/markdown-clipboard.ts";
 import EmojiCommand from "./emoji-command";
 import { countWords } from "alfaaz";
+import AutoJoiner from "@/features/editor/extensions/autojoiner.ts";
 
 const lowlight = createLowlight(common);
 lowlight.register("mermaid", plaintext);
@@ -176,6 +182,10 @@ export const mainExtensions = [
   }),
   LinkExtension.configure({
     openOnClick: false,
+  }).extend({
+    addMarkView() {
+      return ReactMarkViewRenderer(LinkView);
+    },
   }),
   Superscript,
   SubScript,
@@ -243,8 +253,8 @@ export const mainExtensions = [
     resize: {
       enabled: true,
       directions: ["left", "right"],
-      minWidth: 80,
-      minHeight: 40,
+      minWidth: 24,
+      minHeight: 16,
       alwaysPreserveAspectRatio: true,
       //@ts-ignore
       createCustomHandle: createImageHandle,
@@ -256,13 +266,16 @@ export const mainExtensions = [
     resize: {
       enabled: true,
       directions: ["left", "right"],
-      minWidth: 80,
-      minHeight: 40,
+      minWidth: 24,
+      minHeight: 16,
       alwaysPreserveAspectRatio: true,
       //@ts-ignore
       createCustomHandle: createResizeHandle,
       className: buildResizeClasses("node-video"),
     },
+  }),
+  TiptapAudio.configure({
+    view: AudioView,
   }),
   Callout.configure({
     view: CalloutView,
@@ -284,8 +297,8 @@ export const mainExtensions = [
     resize: {
       enabled: true,
       directions: ["left", "right"],
-      minWidth: 80,
-      minHeight: 40,
+      minWidth: 24,
+      minHeight: 16,
       alwaysPreserveAspectRatio: true,
       //@ts-ignore
       createCustomHandle: createResizeHandle,
@@ -297,8 +310,8 @@ export const mainExtensions = [
     resize: {
       enabled: true,
       directions: ["left", "right"],
-      minWidth: 80,
-      minHeight: 40,
+      minWidth: 24,
+      minHeight: 16,
       alwaysPreserveAspectRatio: true,
       //@ts-ignore
       createCustomHandle: createResizeHandle,
@@ -307,6 +320,9 @@ export const mainExtensions = [
   }),
   Embed.configure({
     view: EmbedView,
+  }),
+  TiptapPdf.configure({
+    view: PdfView,
   }),
   Subpages.configure({
     view: SubpagesView,
@@ -338,6 +354,9 @@ export const mainExtensions = [
   }).configure(),
   Columns,
   Column,
+  AutoJoiner.configure({
+    elementsToJoin: [],
+  }),
 ] as any;
 
 type CollabExtensions = (provider: HocuspocusProvider, user: IUser) => any[];

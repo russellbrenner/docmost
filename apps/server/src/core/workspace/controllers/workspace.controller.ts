@@ -33,8 +33,10 @@ import {
 } from '../../casl/interfaces/workspace-ability.type';
 import { FastifyReply } from 'fastify';
 import { EnvironmentService } from '../../../integrations/environment/environment.service';
+import { LicenseCheckService } from '../../../integrations/environment/license-check.service';
 import { CheckHostnameDto } from '../dto/check-hostname.dto';
 import { RemoveWorkspaceUserDto } from '../dto/remove-workspace-user.dto';
+import { WorkspaceRepo } from '@docmost/db/repos/workspace/workspace.repo';
 
 @UseGuards(JwtAuthGuard)
 @Controller('workspace')
@@ -43,7 +45,9 @@ export class WorkspaceController {
     private readonly workspaceService: WorkspaceService,
     private readonly workspaceInvitationService: WorkspaceInvitationService,
     private readonly workspaceAbility: WorkspaceAbilityFactory,
+    private readonly workspaceRepo: WorkspaceRepo,
     private environmentService: EnvironmentService,
+    private licenseCheckService: LicenseCheckService,
   ) {}
 
   @HttpCode(HttpStatus.OK)
@@ -72,6 +76,23 @@ export class WorkspaceController {
   @Post('/info')
   async getWorkspace(@AuthWorkspace() workspace: Workspace) {
     return this.workspaceService.getWorkspaceInfo(workspace.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('entitlements')
+  async getEntitlements(@AuthWorkspace() workspace: Workspace) {
+    let { licenseKey } = workspace;
+    const { plan } = workspace;
+
+    if (!licenseKey) {
+      licenseKey = await this.workspaceRepo.findLicenseKeyById(workspace.id);
+    }
+
+    return {
+      cloud: this.environmentService.isCloud(),
+      tier: this.licenseCheckService.resolveTier(licenseKey, plan),
+      features: this.licenseCheckService.resolveFeatures(licenseKey, plan),
+    };
   }
 
   @HttpCode(HttpStatus.OK)

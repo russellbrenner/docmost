@@ -27,6 +27,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { ClsModule } from 'nestjs-cls';
 import { GitSyncModule } from './integrations/git-sync/git-sync.module';
 import { NoopAuditModule } from './integrations/audit/audit.module';
+import { ThrottleModule } from './integrations/throttle/throttle.module';
 
 const enterpriseModules = [];
 try {
@@ -85,6 +86,7 @@ try {
     SecurityModule,
     TelemetryModule,
     GitSyncModule,
+    ThrottleModule,
     ...enterpriseModules,
   ],
   controllers: [AppController],
