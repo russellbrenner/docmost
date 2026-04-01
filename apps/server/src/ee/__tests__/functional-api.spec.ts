@@ -2,9 +2,13 @@
  * Functional API tests for the EE agent-provision and granular-edit modules.
  * Requires a running Docmost instance at TEST_DOCMOST_URL with EE license.
  *
- * Run with: TEST_DOCMOST_URL=https://test-wiki.itsa.house npx jest --testPathPatterns="ee/__tests__/functional" --no-cache
+ * Run with: TEST_DOCMOST_URL=https://test-wiki.itsa.house pnpm jest --testPathPatterns="ee/__tests__/functional" --no-cache
  *
  * These tests exercise the full HTTP stack, not mocked services.
+ *
+ * NOTE: All Docmost REST responses are wrapped by TransformHttpResponseInterceptor:
+ *   { data: <payload>, success: true, status: <code> }
+ * Access the actual payload via resp.data.data.
  */
 
 const TEST_URL = process.env.TEST_DOCMOST_URL || 'https://test-wiki.itsa.house';
@@ -32,12 +36,6 @@ async function post(path: string, body: Record<string, unknown> = {}, token?: st
   const cookieMatch = setCookie.match(/authToken=([^;]+)/);
   const authToken = cookieMatch ? cookieMatch[1] : undefined;
   return { status: resp.status, data, ok: resp.ok, authToken };
-}
-
-function extractToken(setCookie: string | null): string | undefined {
-  if (!setCookie) return undefined;
-  const match = setCookie.match(/authToken=([^;]+)/);
-  return match ? match[1] : undefined;
 }
 
 async function setupWorkspace(): Promise<string> {
@@ -90,17 +88,17 @@ beforeAll(async () => {
     slug: 'agenttestspace',
   }, adminToken);
 
-  if (spaceResp.ok && spaceResp.data?.id) {
-    testSpaceId = spaceResp.data.id;
+  if (spaceResp.ok && spaceResp.data?.data?.id) {
+    testSpaceId = spaceResp.data.data.id;
   } else {
     // Space might already exist, find it in the list
-    // Docmost's spaces endpoint returns { data: { items: [...] } }
     const spacesResp = await post('spaces', {}, adminToken);
     if (spacesResp.ok) {
-      const spaceList = spacesResp.data?.data?.items
-        || spacesResp.data?.items
-        || (Array.isArray(spacesResp.data) ? spacesResp.data : []);
-      const existing = spaceList.find?.((s: any) => s.slug === 'agenttestspace');
+      const spaceList = spacesResp.data?.data?.data?.items
+        || spacesResp.data?.data?.items
+        || spacesResp.data?.data
+        || (Array.isArray(spacesResp.data?.data) ? spacesResp.data.data : []);
+      const existing = Array.isArray(spaceList) && spaceList.find?.((s: any) => s.slug === 'agenttestspace');
       if (existing) {
         testSpaceId = existing.id;
       }
@@ -123,14 +121,15 @@ describe('Agent Provisioning API', () => {
     }, adminToken);
 
     expect(resp.ok).toBe(true);
-    expect(resp.data.agent).toBeDefined();
-    expect(resp.data.agent.slug).toBe('test-research-agent');
-    expect(resp.data.token).toBeDefined();
-    expect(typeof resp.data.token).toBe('string');
-    expect(resp.data.token.length).toBeGreaterThan(20);
+    // All responses wrapped: { data: <payload>, success: true, status: N }
+    expect(resp.data.data?.agent).toBeDefined();
+    expect(resp.data.data.agent.slug).toBe('test-research-agent');
+    expect(resp.data.data?.token).toBeDefined();
+    expect(typeof resp.data.data.token).toBe('string');
+    expect(resp.data.data.token.length).toBeGreaterThan(20);
 
-    agentSlug = resp.data.agent.slug;
-    agentToken = resp.data.token;
+    agentSlug = resp.data.data.agent.slug;
+    agentToken = resp.data.data.token;
   });
 
   it('should reject duplicate agent slug', async () => {
@@ -152,6 +151,7 @@ describe('Agent Provisioning API', () => {
     const resp = await post('agents/registry', {}, adminToken);
 
     expect(resp.ok).toBe(true);
+    // Registry returns raw array, interceptor wraps: { data: [...], success: true }
     expect(resp.data.data).toBeDefined();
     expect(Array.isArray(resp.data.data)).toBe(true);
     expect(resp.data.data.length).toBeGreaterThanOrEqual(1);
@@ -174,10 +174,10 @@ describe('Agent Token Authentication', () => {
     }, agentToken);
 
     expect(resp.ok).toBe(true);
-    expect(resp.data.id).toBeDefined();
-    expect(resp.data.creatorId).toBeDefined();
+    expect(resp.data.data?.id).toBeDefined();
+    expect(resp.data.data?.creatorId).toBeDefined();
 
-    testPageId = resp.data.id;
+    testPageId = resp.data.data.id;
   });
 
   it('should show agent as page creator', async () => {
@@ -190,7 +190,7 @@ describe('Agent Token Authentication', () => {
 
     expect(resp.ok).toBe(true);
     // The creator should be the agent user, not the admin
-    expect(resp.data.creator?.email).toBe('test-research@agents.itsa.house');
+    expect(resp.data.data?.creator?.email).toBe('test-research@agents.itsa.house');
   });
 });
 
@@ -208,15 +208,15 @@ describe('Granular Editing API', () => {
     }, agentToken);
 
     expect(resp.ok).toBe(true);
-    expect(resp.data.operation).toBe('find_replace');
-    expect(resp.data.matchCount).toBe(1);
-    expect(resp.data.replacedCount).toBe(1);
+    expect(resp.data.data?.operation).toBe('find_replace');
+    expect(resp.data.data?.matchCount).toBe(1);
+    expect(resp.data.data?.replacedCount).toBe(1);
 
     // Verify the change
     const page = await post('pages/info', { pageId: testPageId, format: 'markdown' }, agentToken);
     expect(page.ok).toBe(true);
-    expect(page.data.content).toContain('opening section');
-    expect(page.data.content).not.toContain('introduction paragraph');
+    expect(page.data.data?.content).toContain('opening section');
+    expect(page.data.data?.content).not.toContain('introduction paragraph');
   });
 
   it('should return 404 when find text not found', async () => {
@@ -246,17 +246,17 @@ describe('Granular Editing API', () => {
     }, agentToken);
 
     expect(resp.ok).toBe(true);
-    expect(resp.data.operation).toBe('replace_section');
-    expect(resp.data.success).toBe(true);
+    expect(resp.data.data?.operation).toBe('replace_section');
+    expect(resp.data.data?.success).toBe(true);
 
     // Verify the change
     const page = await post('pages/info', { pageId: testPageId, format: 'markdown' }, agentToken);
     expect(page.ok).toBe(true);
-    expect(page.data.content).toContain('completely rewritten by an agent');
-    expect(page.data.content).not.toContain('detail text here about');
+    expect(page.data.data?.content).toContain('completely rewritten by an agent');
+    expect(page.data.data?.content).not.toContain('detail text here about');
     // Introduction and Conclusion should be untouched
-    expect(page.data.content).toContain('Introduction');
-    expect(page.data.content).toContain('Conclusion');
+    expect(page.data.data?.content).toContain('Introduction');
+    expect(page.data.data?.content).toContain('Conclusion');
   });
 
   it('should return 404 when section heading not found', async () => {
@@ -288,13 +288,13 @@ describe('Granular Editing API', () => {
     }, agentToken);
 
     expect(resp.ok).toBe(true);
-    expect(resp.data.operation).toBe('insert_after');
-    expect(resp.data.success).toBe(true);
+    expect(resp.data.data?.operation).toBe('insert_after');
+    expect(resp.data.data?.success).toBe(true);
 
     // Verify the change
     const page = await post('pages/info', { pageId: testPageId, format: 'markdown' }, agentToken);
     expect(page.ok).toBe(true);
-    expect(page.data.content).toContain('inserted by an agent after the Conclusion');
+    expect(page.data.data?.content).toContain('inserted by an agent after the Conclusion');
   });
 
   it('should show agent in contributor list after edits', async () => {
@@ -302,7 +302,7 @@ describe('Granular Editing API', () => {
 
     const resp = await post('pages/info', { pageId: testPageId }, adminToken);
     expect(resp.ok).toBe(true);
-    expect(resp.data.lastUpdatedBy?.email).toBe('test-research@agents.itsa.house');
+    expect(resp.data.data?.lastUpdatedBy?.email).toBe('test-research@agents.itsa.house');
   });
 });
 
@@ -313,15 +313,15 @@ describe('Agent Token Rotation', () => {
     const resp = await post('agents/rotate-token', { slug: agentSlug }, adminToken);
 
     expect(resp.ok).toBe(true);
-    expect(resp.data.token).toBeDefined();
-    expect(resp.data.token).not.toBe(agentToken);
+    expect(resp.data.data?.token).toBeDefined();
+    expect(resp.data.data.token).not.toBe(agentToken);
 
     // Old token should no longer work
     const oldTokenResp = await post('pages/info', { pageId: testPageId }, agentToken);
     expect(oldTokenResp.ok).toBe(false);
 
     // New token should work
-    const newToken = resp.data.token;
+    const newToken = resp.data.data.token;
     const newTokenResp = await post('pages/info', { pageId: testPageId }, newToken);
     expect(newTokenResp.ok).toBe(true);
 
@@ -347,7 +347,7 @@ describe('Agent Revocation', () => {
     const resp = await post('agents/registry', {}, adminToken);
     expect(resp.ok).toBe(true);
 
-    const agent = resp.data.data?.find((a: any) => a.slug === agentSlug);
+    const agent = (resp.data.data as any[])?.find((a: any) => a.slug === agentSlug);
     expect(agent).toBeUndefined();
   });
 });
