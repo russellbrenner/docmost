@@ -2,7 +2,7 @@ name: Build and deploy
 
 on:
   push:
-    branches: [main, worktree-feature+agent-collaboration]
+    branches: [main, feature/agent-collaboration]
     paths-ignore:
       - "plans/**"
       - "*.md"
