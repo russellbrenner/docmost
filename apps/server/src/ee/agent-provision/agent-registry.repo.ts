@@ -1,16 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB, KyselyTransaction } from '@docmost/db/types/kysely.types';
+import { InsertableAgentRegistry } from '@docmost/db/types/entity.types';
 import { dbOrTx } from '@docmost/db/utils';
-
-export interface InsertableAgentRegistry {
-  name: string;
-  slug: string;
-  userId: string;
-  apiKeyId: string;
-  token: string;
-  workspaceId: string;
-}
 
 @Injectable()
 export class AgentRegistryRepo {

@@ -1,5 +1,3 @@
-import { TiptapTransformer } from '@hocuspocus/transformer';
-import { tiptapExtensions } from '../../../../collaboration/collaboration.util';
 import * as Y from 'yjs';
 import {
   extractTextFromYNode,
@@ -7,12 +5,7 @@ import {
   findNodeById,
   getSectionBoundaries,
 } from '../fragment-utils';
-
-function createTestDoc(content: any[]): Y.XmlFragment {
-  const pmJson = { type: 'doc', content };
-  const ydoc = TiptapTransformer.toYdoc(pmJson, 'default', tiptapExtensions);
-  return ydoc.getXmlFragment('default');
-}
+import { createTestDoc } from './yjs-test-helpers';
 
 const standardContent = [
   {
@@ -61,8 +54,12 @@ describe('fragment-utils', () => {
     });
 
     it('extracts text from a Y.XmlText node', () => {
+      // XmlText must be attached to a Y.Doc before reading
+      const ydoc = new Y.Doc();
+      const frag = ydoc.getXmlFragment('test');
       const ytext = new Y.XmlText();
       ytext.insert(0, 'Plain text node');
+      frag.insert(0, [ytext]);
       expect(extractTextFromYNode(ytext)).toBe('Plain text node');
     });
 
@@ -99,7 +96,10 @@ describe('fragment-utils', () => {
     });
 
     it('returns empty string for an element with no text', () => {
+      const ydoc = new Y.Doc();
+      const frag = ydoc.getXmlFragment('test');
       const element = new Y.XmlElement('paragraph');
+      frag.insert(0, [element]);
       expect(extractTextFromYNode(element)).toBe('');
     });
   });
@@ -204,17 +204,16 @@ describe('fragment-utils', () => {
   describe('getSectionBoundaries', () => {
     it('returns correct boundaries for a section between same-level headings', () => {
       const fragment = createTestDoc(standardContent);
-      // H1 "Introduction" is at index 0, next H1 "Conclusion" is at index 4
-      // Section content: paragraph (idx 1), H2 "Details" (idx 2), paragraph (idx 3)
+      // H1 "Introduction" at index 0; next H1 "Conclusion" at index 4
+      // Section body: paragraph (1), H2 "Details" (2), paragraph (3) = 3 nodes
       const bounds = getSectionBoundaries(fragment, 0, 1);
       expect(bounds.contentStart).toBe(1);
-      // Content includes paragraph, H2 heading, and H2's paragraph (H2 < H1 so doesn't break)
       expect(bounds.contentLength).toBe(3);
     });
 
     it('returns correct boundaries for a subsection (H2 under H1)', () => {
       const fragment = createTestDoc(standardContent);
-      // H2 "Details" at index 2, next heading at same-or-higher level is H1 "Conclusion" at index 4
+      // H2 "Details" at index 2; next heading of level <= 2 is H1 "Conclusion" at index 4
       const bounds = getSectionBoundaries(fragment, 2, 2);
       expect(bounds.contentStart).toBe(3);
       expect(bounds.contentLength).toBe(1);
@@ -222,7 +221,7 @@ describe('fragment-utils', () => {
 
     it('extends to end of document for the last section', () => {
       const fragment = createTestDoc(standardContent);
-      // H1 "Conclusion" is at index 4, followed only by paragraph at index 5
+      // H1 "Conclusion" at index 4; only paragraph at index 5 follows
       const bounds = getSectionBoundaries(fragment, 4, 1);
       expect(bounds.contentStart).toBe(5);
       expect(bounds.contentLength).toBe(1);
@@ -274,7 +273,7 @@ describe('fragment-utils', () => {
         },
       ];
       const fragment = createTestDoc(content);
-      // H1 at index 0 owns everything after it since there is no subsequent H1
+      // H1 at index 0 owns everything below (no subsequent H1)
       const bounds = getSectionBoundaries(fragment, 0, 1);
       expect(bounds.contentStart).toBe(1);
       expect(bounds.contentLength).toBe(4);

@@ -1,17 +1,7 @@
-import { TiptapTransformer } from '@hocuspocus/transformer';
-import { tiptapExtensions } from '../../../../collaboration/collaboration.util';
 import * as Y from 'yjs';
-import {
-  findAndReplaceInFragment,
-  FindReplaceResult,
-} from '../find-replace';
+import { findAndReplaceInFragment } from '../find-replace';
 import { extractTextFromYNode } from '../fragment-utils';
-
-function createTestDoc(content: any[]): Y.XmlFragment {
-  const pmJson = { type: 'doc', content };
-  const ydoc = TiptapTransformer.toYdoc(pmJson, 'default', tiptapExtensions);
-  return ydoc.getXmlFragment('default');
-}
+import { createTestDoc } from './yjs-test-helpers';
 
 function getFullText(fragment: Y.XmlFragment): string {
   let text = '';
@@ -65,7 +55,6 @@ describe('findAndReplaceInFragment', () => {
     const result = findAndReplaceInFragment(fragment, 'aaa', 'ZZZ', false, 2);
     expect(result.replacedCount).toBe(1);
     const text = getFullText(fragment);
-    // First 'aaa' should remain, second should be replaced
     expect(text).toBe('aaa bbb ZZZ ccc aaa');
   });
 
@@ -183,7 +172,6 @@ describe('findAndReplaceInFragment', () => {
 
     const result = findAndReplaceInFragment(fragment, 'apple', 'orange', false, 1);
     expect(result.replacedCount).toBe(1);
-    // matchCount stops counting after replacement for specific occurrence
     expect(result.matchCount).toBe(1);
     expect(getFullText(fragment)).toBe('orange apple apple');
   });

@@ -1,8 +1,3 @@
-import { TiptapTransformer } from '@hocuspocus/transformer';
-import {
-  tiptapExtensions,
-  prosemirrorNodeToYElement,
-} from '../../../../collaboration/collaboration.util';
 import * as Y from 'yjs';
 import {
   replaceSectionContent,
@@ -11,12 +6,7 @@ import {
   AmbiguousIdentifierError,
 } from '../section-ops';
 import { extractTextFromYNode } from '../fragment-utils';
-
-function createTestDoc(content: any[]): Y.XmlFragment {
-  const pmJson = { type: 'doc', content };
-  const ydoc = TiptapTransformer.toYdoc(pmJson, 'default', tiptapExtensions);
-  return ydoc.getXmlFragment('default');
-}
+import { createTestDoc, makeParagraph } from './yjs-test-helpers';
 
 function getFullText(fragment: Y.XmlFragment): string {
   let text = '';
@@ -73,49 +63,41 @@ const standardContent = [
   },
 ];
 
-function makeNewParagraph(text: string): Y.XmlElement | Y.XmlText {
-  return prosemirrorNodeToYElement({
-    type: 'paragraph',
-    content: [{ type: 'text', text }],
-  });
-}
-
 describe('section-ops', () => {
   describe('replaceSectionContent', () => {
     it('replaces content under a heading identified by text', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Replaced introduction content.');
+      const newPara = makeParagraph('Replaced introduction content.');
 
       replaceSectionContent(fragment, 'Introduction', 'text', [newPara]);
 
       const texts = getNodeTexts(fragment);
-      // Heading should be preserved
+      // Heading preserved
       expect(texts[0]).toBe('Introduction');
-      // Old paragraph replaced with new
+      // Old body (paragraph, H2 sub-section, paragraph) replaced with single new paragraph
       expect(texts[1]).toBe('Replaced introduction content.');
-      // H2 and its content should follow (Introduction section at H1 includes H2 sub-sections)
-      // Actually, introduction section at H1 extends until next H1, so H2 and its paragraph were deleted
+      // Conclusion section follows
       expect(getFullText(fragment)).toContain('Conclusion');
     });
 
     it('replaces content under a heading identified by node ID', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('New details here.');
+      const newPara = makeParagraph('New details here.');
 
       replaceSectionContent(fragment, 'h2-details', 'id', [newPara]);
 
       const fullText = getFullText(fragment);
       expect(fullText).toContain('New details here.');
       expect(fullText).not.toContain('Detail paragraph.');
-      // Heading should be preserved
+      // Heading preserved
       expect(fullText).toContain('Details');
-      // Conclusion should still be present
+      // Conclusion still present
       expect(fullText).toContain('Conclusion');
     });
 
     it('throws IdentifierNotFoundError when heading text is not found', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Will not be inserted.');
+      const newPara = makeParagraph('Will not be inserted.');
 
       expect(() => {
         replaceSectionContent(fragment, 'Nonexistent', 'text', [newPara]);
@@ -124,7 +106,7 @@ describe('section-ops', () => {
 
     it('throws IdentifierNotFoundError when node ID is not found', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Will not be inserted.');
+      const newPara = makeParagraph('Will not be inserted.');
 
       expect(() => {
         replaceSectionContent(fragment, 'no-such-id', 'id', [newPara]);
@@ -153,7 +135,7 @@ describe('section-ops', () => {
         },
       ];
       const fragment = createTestDoc(content);
-      const newPara = makeNewParagraph('Ambiguous replacement.');
+      const newPara = makeParagraph('Ambiguous replacement.');
 
       expect(() => {
         replaceSectionContent(fragment, 'Section', 'text', [newPara]);
@@ -170,21 +152,21 @@ describe('section-ops', () => {
 
     it('handles section at end of document (no subsequent heading)', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('New conclusion content.');
+      const newPara = makeParagraph('New conclusion content.');
 
       replaceSectionContent(fragment, 'Conclusion', 'text', [newPara]);
 
       const fullText = getFullText(fragment);
       expect(fullText).toContain('New conclusion content.');
       expect(fullText).not.toContain('Conclusion paragraph.');
-      // Conclusion heading preserved
+      // Heading preserved
       expect(fullText).toContain('Conclusion');
     });
 
     it('replaces with multiple new elements', () => {
       const fragment = createTestDoc(standardContent);
-      const para1 = makeNewParagraph('First new paragraph.');
-      const para2 = makeNewParagraph('Second new paragraph.');
+      const para1 = makeParagraph('First new paragraph.');
+      const para2 = makeParagraph('Second new paragraph.');
 
       replaceSectionContent(fragment, 'Conclusion', 'text', [para1, para2]);
 
@@ -207,26 +189,24 @@ describe('section-ops', () => {
   describe('insertAfterNode', () => {
     it('inserts content after a heading identified by text', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Inserted after Introduction heading.');
+      const newPara = makeParagraph('Inserted after Introduction heading.');
 
       insertAfterNode(fragment, 'Introduction', 'text', [newPara]);
 
       const texts = getNodeTexts(fragment);
-      // The new paragraph should appear right after the Introduction heading
       expect(texts[0]).toBe('Introduction');
       expect(texts[1]).toBe('Inserted after Introduction heading.');
-      // The original intro paragraph should now be at index 2
+      // Original intro paragraph pushed to index 2
       expect(texts[2]).toBe('Intro paragraph.');
     });
 
     it('inserts content after a heading identified by node ID', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Inserted after Details heading.');
+      const newPara = makeParagraph('Inserted after Details heading.');
 
       insertAfterNode(fragment, 'h2-details', 'id', [newPara]);
 
       const texts = getNodeTexts(fragment);
-      // Find the "Details" heading and check the next element
       const detailsIdx = texts.indexOf('Details');
       expect(detailsIdx).toBeGreaterThan(-1);
       expect(texts[detailsIdx + 1]).toBe('Inserted after Details heading.');
@@ -234,7 +214,7 @@ describe('section-ops', () => {
 
     it('throws IdentifierNotFoundError when heading text is not found', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Will not be inserted.');
+      const newPara = makeParagraph('Will not be inserted.');
 
       expect(() => {
         insertAfterNode(fragment, 'Nonexistent', 'text', [newPara]);
@@ -243,7 +223,7 @@ describe('section-ops', () => {
 
     it('throws IdentifierNotFoundError when node ID is not found', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Will not be inserted.');
+      const newPara = makeParagraph('Will not be inserted.');
 
       expect(() => {
         insertAfterNode(fragment, 'no-such-id', 'id', [newPara]);
@@ -264,7 +244,7 @@ describe('section-ops', () => {
         },
       ];
       const fragment = createTestDoc(content);
-      const newPara = makeNewParagraph('After which one?');
+      const newPara = makeParagraph('After which one?');
 
       expect(() => {
         insertAfterNode(fragment, 'Duplicate', 'text', [newPara]);
@@ -273,7 +253,7 @@ describe('section-ops', () => {
 
     it('inserts after a paragraph identified by ID', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Inserted after intro paragraph.');
+      const newPara = makeParagraph('Inserted after intro paragraph.');
 
       insertAfterNode(fragment, 'p-intro', 'id', [newPara]);
 
@@ -285,8 +265,8 @@ describe('section-ops', () => {
 
     it('inserts multiple elements in order', () => {
       const fragment = createTestDoc(standardContent);
-      const para1 = makeNewParagraph('First inserted.');
-      const para2 = makeNewParagraph('Second inserted.');
+      const para1 = makeParagraph('First inserted.');
+      const para2 = makeParagraph('Second inserted.');
 
       insertAfterNode(fragment, 'Conclusion', 'text', [para1, para2]);
 
@@ -298,7 +278,7 @@ describe('section-ops', () => {
 
     it('inserts at end of document when target is the last node', () => {
       const fragment = createTestDoc(standardContent);
-      const newPara = makeNewParagraph('Very last element.');
+      const newPara = makeParagraph('Very last element.');
 
       insertAfterNode(fragment, 'p-conclusion', 'id', [newPara]);
 
