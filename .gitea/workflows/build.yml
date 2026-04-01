@@ -26,7 +26,7 @@ jobs:
         run: |
           REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
           AUTH_URL=$(echo "$REPO_URL" | sed "s|https://|https://token:${DEPLOY_TOKEN}@|")
-          rm -rf checkout && git clone --depth=1 "$AUTH_URL" checkout
+          rm -rf checkout && git clone --depth=1 --branch "${{ github.ref_name }}" "$AUTH_URL" checkout
 
       - name: Registry login
         env:
