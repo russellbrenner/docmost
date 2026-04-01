@@ -13,6 +13,13 @@
 
 const TEST_URL = process.env.TEST_DOCMOST_URL || 'https://test-wiki.itsa.house';
 
+// Unique suffix per test run to avoid conflicts from leftover DB state
+const RUN_ID = Date.now().toString(36);
+const AGENT_NAME = `Test Research Agent ${RUN_ID}`;
+const AGENT_EMAIL = `test-research-${RUN_ID}@agents.itsa.house`;
+const AGENT_EXPECTED_SLUG = `test-research-agent-${RUN_ID}`;
+const SPACE_SLUG = `agenttestspace${RUN_ID}`;
+
 // We need an admin token to bootstrap. The initial setup creates one.
 let adminToken: string;
 let testSpaceId: string;
@@ -82,27 +89,14 @@ beforeAll(async () => {
 
   adminToken = await setupWorkspace();
 
-  // Create a test space (or use the existing one)
+  // Create a test space unique to this run
   const spaceResp = await post('spaces/create', {
-    name: 'Agent Test Space',
-    slug: 'agenttestspace',
+    name: `Agent Test Space ${RUN_ID}`,
+    slug: SPACE_SLUG,
   }, adminToken);
 
   if (spaceResp.ok && spaceResp.data?.data?.id) {
     testSpaceId = spaceResp.data.data.id;
-  } else {
-    // Space might already exist, find it in the list
-    const spacesResp = await post('spaces', {}, adminToken);
-    if (spacesResp.ok) {
-      const spaceList = spacesResp.data?.data?.data?.items
-        || spacesResp.data?.data?.items
-        || spacesResp.data?.data
-        || (Array.isArray(spacesResp.data?.data) ? spacesResp.data.data : []);
-      const existing = Array.isArray(spaceList) && spaceList.find?.((s: any) => s.slug === 'agenttestspace');
-      if (existing) {
-        testSpaceId = existing.id;
-      }
-    }
   }
 
   if (!testSpaceId) {
@@ -115,15 +109,15 @@ describe('Agent Provisioning API', () => {
     if (!adminToken) return;
 
     const resp = await post('agents/provision', {
-      name: 'Test Research Agent',
-      email: 'test-research@agents.itsa.house',
+      name: AGENT_NAME,
+      email: AGENT_EMAIL,
       spaceIds: [testSpaceId],
     }, adminToken);
 
     expect(resp.ok).toBe(true);
     // All responses wrapped: { data: <payload>, success: true, status: N }
     expect(resp.data.data?.agent).toBeDefined();
-    expect(resp.data.data.agent.slug).toBe('test-research-agent');
+    expect(resp.data.data.agent.slug).toBe(AGENT_EXPECTED_SLUG);
     expect(resp.data.data?.token).toBeDefined();
     expect(typeof resp.data.data.token).toBe('string');
     expect(resp.data.data.token.length).toBeGreaterThan(20);
@@ -136,8 +130,8 @@ describe('Agent Provisioning API', () => {
     if (!adminToken) return;
 
     const resp = await post('agents/provision', {
-      name: 'Test Research Agent',
-      email: 'test-research-2@agents.itsa.house',
+      name: AGENT_NAME,
+      email: `test-research-dup-${RUN_ID}@agents.itsa.house`,
     }, adminToken);
 
     expect(resp.ok).toBe(false);
@@ -190,7 +184,8 @@ describe('Agent Token Authentication', () => {
 
     expect(resp.ok).toBe(true);
     // The creator should be the agent user, not the admin
-    expect(resp.data.data?.creator?.email).toBe('test-research@agents.itsa.house');
+    // pages/info exposes { id, name, avatarUrl } on creator — not email
+    expect(resp.data.data?.creator?.name).toBe(AGENT_NAME);
   });
 });
 
@@ -302,7 +297,8 @@ describe('Granular Editing API', () => {
 
     const resp = await post('pages/info', { pageId: testPageId }, adminToken);
     expect(resp.ok).toBe(true);
-    expect(resp.data.data?.lastUpdatedBy?.email).toBe('test-research@agents.itsa.house');
+    // lastUpdatedBy exposes { id, name, avatarUrl } — not email
+    expect(resp.data.data?.lastUpdatedBy?.name).toBe(AGENT_NAME);
   });
 });
 
