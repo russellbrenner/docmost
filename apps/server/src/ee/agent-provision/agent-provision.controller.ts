@@ -65,7 +65,8 @@ export class AgentProvisionController {
   ) {
     this.checkLicense(workspace);
     this.checkAdminRole(user);
-    return this.agentProvisionService.listAgents(workspace.id);
+    const agents = await this.agentProvisionService.listAgents(workspace.id);
+    return { data: agents };
   }
 
   @HttpCode(HttpStatus.OK)
