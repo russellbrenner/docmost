@@ -100,10 +100,13 @@ export class AgentProvisionService {
       );
 
       // Create API key (100-year token when no expiresAt)
+      // Pass trx so the insert runs inside the same transaction as the user creation,
+      // preventing the api_keys.creator_id FK constraint from firing on an uncommitted row.
       const { apiKey, token } = await this.apiKeyService.createApiKey({
         name: `Agent: ${dto.name}`,
         creatorId: newUser.id,
         workspaceId: workspace.id,
+        db: trx,
       });
 
       // Register in agent_registry

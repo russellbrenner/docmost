@@ -72,8 +72,10 @@ export class ApiKeyService {
     creatorId: string;
     workspaceId: string;
     expiresAt?: Date;
+    db?: KyselyDB;
   }) {
-    const result = await this.db
+    const db = opts.db ?? this.db;
+    const result = await db
       .insertInto('apiKeys')
       .values({
         name: opts.name,
@@ -85,7 +87,7 @@ export class ApiKeyService {
       .executeTakeFirstOrThrow();
 
     const id = result.id;
-    const user = await this.db
+    const user = await db
       .selectFrom('users')
       .selectAll()
       .where('id', '=', opts.creatorId)
