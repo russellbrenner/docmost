@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { ClsService } from 'nestjs-cls';
+import * as Sentry from '@sentry/nestjs';
 
 export interface AuditContext {
   workspaceId: string | null;
@@ -33,6 +34,12 @@ export class AuditContextMiddleware implements NestMiddleware {
     };
 
     this.cls.set(AUDIT_CONTEXT_KEY, auditContext);
+
+    if (auditContext.actorId) {
+      Sentry.getCurrentScope().setUser({ id: auditContext.actorId });
+      Sentry.getCurrentScope().setTag('workspaceId', auditContext.workspaceId);
+      Sentry.getCurrentScope().setTag('actorType', auditContext.actorType);
+    }
 
     next();
   }

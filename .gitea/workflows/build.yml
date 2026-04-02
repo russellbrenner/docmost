@@ -49,11 +49,18 @@ jobs:
           fi
 
       - name: Build image
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_SENTRY_ENVIRONMENT: ${{ vars.VITE_SENTRY_ENVIRONMENT }}
+          VITE_SENTRY_ENABLED: ${{ vars.VITE_SENTRY_ENABLED }}
         run: |
           cd checkout
           # Clean stale buildah storage to prevent cleanup errors
           buildah rm --all 2>/dev/null || true
           buildah bud --isolation=chroot --no-cache \
+            --build-arg VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" \
+            --build-arg VITE_SENTRY_ENVIRONMENT="${VITE_SENTRY_ENVIRONMENT:-production}" \
+            --build-arg VITE_SENTRY_ENABLED="${VITE_SENTRY_ENABLED:-true}" \
             -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${IMAGE_TAG} \
             -t ${{ vars.REGISTRY_URL }}/rbrenner/docmost:${SHORT_SHA} \
             -f Dockerfile . || {

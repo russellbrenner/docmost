@@ -1,3 +1,6 @@
+import './instrument';
+import * as Sentry from '@sentry/nestjs';
+import { setupFastifyErrorHandler } from '@sentry/nestjs';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import {
@@ -96,15 +99,18 @@ async function bootstrap() {
   app.enableCors();
   app.useGlobalInterceptors(new TransformHttpResponseInterceptor(reflector));
   app.enableShutdownHooks();
+  setupFastifyErrorHandler(app);
 
   const logger = new Logger('NestApplication');
 
   process.on('unhandledRejection', (reason, promise) => {
     logger.error(`UnhandledRejection, reason: ${reason}`, promise);
+    Sentry.captureException(reason);
   });
 
   process.on('uncaughtException', (error) => {
     logger.error('UncaughtException:', error);
+    Sentry.captureException(error);
   });
 
   const port = process.env.PORT || 3000;

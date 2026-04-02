@@ -2,6 +2,7 @@ import { UserProvider } from "@/features/user/user-provider.tsx";
 import { Outlet, useParams } from "react-router-dom";
 import GlobalAppShell from "@/components/layouts/global/global-app-shell.tsx";
 import { PosthogUser } from "@/ee/components/posthog-user.tsx";
+import { SentryUser } from "@/ee/components/sentry-user.tsx";
 import { isCloud } from "@/lib/config.ts";
 import { SearchSpotlight } from "@/features/search/components/search-spotlight.tsx";
 import React from "react";
@@ -17,6 +18,7 @@ export default function Layout() {
         <Outlet />
       </GlobalAppShell>
       {isCloud() && <PosthogUser />}
+      <SentryUser />
       <SearchSpotlight spaceId={space?.id} />
     </UserProvider>
   );
