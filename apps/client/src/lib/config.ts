@@ -88,6 +88,12 @@ export function getBillingTrialDays() {
   return getConfigValue("BILLING_TRIAL_DAYS");
 }
 
+export const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+export const SENTRY_ENVIRONMENT = import.meta.env.VITE_SENTRY_ENVIRONMENT as
+  | string
+  | undefined;
+export const SENTRY_ENABLED = import.meta.env.VITE_SENTRY_ENABLED === 'true';
+
 export function getPostHogHost() {
   return getConfigValue("POSTHOG_HOST");
 }

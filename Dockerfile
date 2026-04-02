@@ -9,6 +9,10 @@ WORKDIR /app
 
 COPY . .
 
+ARG VITE_SENTRY_DSN
+ARG VITE_SENTRY_ENVIRONMENT=production
+ARG VITE_SENTRY_ENABLED=true
+
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
