@@ -135,6 +135,15 @@ export function diffAuditTrackedFields(
   return hasChanges ? { before: beforeDiff, after: afterDiff } : null;
 }
 
+export function hasLicenseOrEE(opts: {
+  licenseKey: string;
+  plan?: string;
+  isCloud?: boolean;
+}): boolean {
+  const { licenseKey, plan, isCloud } = opts;
+  return Boolean(licenseKey) || (isCloud && plan === 'business');
+}
+
 export function isUserDisabled(user: {
   deactivatedAt?: Date | null;
   deletedAt?: Date | null;
